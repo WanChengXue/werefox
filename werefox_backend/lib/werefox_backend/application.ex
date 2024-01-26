@@ -14,6 +14,7 @@ defmodule WerefoxBackend.Application do
       {Phoenix.PubSub, name: WerefoxBackend.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: WerefoxBackend.Finch},
+      WerefoxBackend.RoomSupervisor,
       # Start a worker by calling: WerefoxBackend.Worker.start_link(arg)
       # {WerefoxBackend.Worker, arg},
       # Start to serve requests, typically the last entry
