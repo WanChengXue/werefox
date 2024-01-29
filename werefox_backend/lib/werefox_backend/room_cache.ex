@@ -13,7 +13,7 @@ defmodule WerefoxBackend.RoomCache do
     def handle_call({:start_room,  config}, _from, state) do
         random_room_id = Base.url_encode64(:crypto.strong_rand_bytes(16))
         {:ok, pid} = WerefoxBackend.RoomController.start_link(random_room_id, config)
-        Map.put(state, random_room_id, pid)
+        state = Map.put(state, random_room_id, pid)
         {:reply, random_room_id, state}
     end
 
@@ -28,6 +28,6 @@ defmodule WerefoxBackend.RoomCache do
     end
 
     def start_room(config) do
-        GenServer.call({:start_room, config})
+        GenServer.call(:room_cache, {:start_room, config})
     end
 end

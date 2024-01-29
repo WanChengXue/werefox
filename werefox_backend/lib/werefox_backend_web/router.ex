@@ -17,7 +17,12 @@ defmodule WerefoxBackendWeb.Router do
   scope "/", WerefoxBackendWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/", PageController, :home 
+  end
+
+  scope "api/", WerefoxBackendWeb do
+    pipe_through :api
+    get "/init_game", ApiController, :init_game
   end
 
   # Other scopes may use custom stacks.

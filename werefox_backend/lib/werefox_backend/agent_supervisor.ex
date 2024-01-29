@@ -6,8 +6,12 @@ defmodule WerefoxBackend.AgentSupervisor do
     end
 
 
-    def init(_) do
-
+    def init(agent_number, room_id, specify_id) do
+        IO.puts("Agent Supervisor Start!")
+        children = [
+            WerefoxBackend.Agent
+        ]
+        Supervisor.init(children, strategy: :one_for_one)
     end
 
 end

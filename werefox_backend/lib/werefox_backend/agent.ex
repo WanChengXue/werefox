@@ -3,7 +3,7 @@ defmodule WerefoxBackend.Agent do
     import OpenaiEx
 
     def init(identity) do
-        openai_bot = OpenaiEx.new("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")
+        openai_bot = OpenaiEx.new("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")
         {:ok, %{"identity" => identity, "ai_bot" => openai_bot, "private_message" => []}}
     end
 
