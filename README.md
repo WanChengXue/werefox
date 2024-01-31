@@ -30,3 +30,12 @@ system --调用，prompt--> model
 - 首次调用，传入的context是一个空字符串，用户的对话的句子也是一个空的，room_id是空，因此room_cache会创建一个room_controller，room_controller会解析yaml的配置文件，生成一个智能体的supervisor，根据解析出来的yaml文件的信息生成若干个智能体在底部运行，room_cache返回对应的room进程的pid给上面的业务使用
 - 
 - 非首次调用，传入的room id非空，yaml config为空，则请求接入，传入到room_cache查找到对应room name的id返回给上层调用者
+
+
+### 2.4 yaml的写法与运行逻辑
+以狼人杀为例：
+```
+1. 描述狼人杀的规则
+2. 主持者发起动作
+
+```

@@ -54,7 +54,7 @@ defmodule WerefoxBackend.MixProject do
       {:httpoison, "~> 2.0"},
       {:poison, "~> 5.0"},
       {:openai_ex, "~> 0.5.6"},
-      {:yaml_elixir, "~> 2.9"},
+      {:yaml_elixir, "~> 2.9"}
     ]
   end
 
