@@ -17,11 +17,11 @@ defmodule WerefoxBackendWeb.ApiController do
   def run_game(conn, %{"room_id" => room_id}) do
     strip_room_id = String.replace(room_id, ~r/\\|"|"/, "")
     room_pid = WerefoxBackend.RoomCache.get_room_pid(strip_room_id)
-    output_string = WerefoxBackend.RoomController.run_game({strip_room_id, room_pid})
+    output_list = WerefoxBackend.RoomController.run_game({strip_room_id, room_pid})
 
     conn
     |> put_status(:ok)
-    |> json(output_string)
+    |> json(Enum.into(output_list, %{}))
   end
 
   def get_summary(conn, %{"room_id" => room_id}) do
