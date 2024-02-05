@@ -20,26 +20,54 @@ defmodule WerefoxBackend.RoomController do
       )
 
     IO.inspect(pid_table)
-    {:ok, %{"pid_table" => pid_table, "context" => [], "next_action" => []}}
+    {:ok, %{"pid_table" => pid_table, "context" => [], "next_action" => [], "step" => 0, "cursor"=>0}}
   end
 
   def handle_call({:run, room_id}, _from, state) do
-    history_context = state["context"]
-
+    history_context = state["next_action"]
+    game_step = state["step"]
     # 处理next_action 这一段，一个动作一个动作的进行处理
-    {agent_pid, content, rest_action, message_type} = generate_agent_next_action({room_id, history_context})
-    {agent_index, agent_action} =
-      WerefoxBackend.Agent.send_message(agent_pid, {message_type, history_context})
+    {agent_pid, {broadcast_type, sender, reciever, content, reply_type}, rest_action} =
+      generate_agent_next_action(room_id, history_context)
 
-    # 返回的是这一个回合所有人的动作后的结果汇总也是一个[%{}， %{}]类型的list
-    new_context = add_public_output_to_content(state["context"], agent_action)
+    message_type = generate_message_type({reply_type, broadcast_type})
+    IO.inspect({"------", {agent_pid, message_type, content, game_step}})
+
+    {new_context, new_next_action, new_cursor} =
+      case reply_type do
+        :reply ->
+          {agent_index, agent_action} =
+            WerefoxBackend.Agent.send_message(
+              agent_pid,
+              {message_type, {sender, content}, game_step, state["cursor"]}
+            )
+
+          # 返回的是这一个回合所有人的动作后的结果汇总也是一个[%{}， %{}]类型的list
+          new_context = add_public_output_to_content(state["context"], agent_action, game_step)
+          new_next_action = rest_action ++ WerefoxBackend.DataStructure.flatten_data(agent_index, agent_action, [])
+          {new_context, new_next_action, state["cursor"]+1}
+
+        :no_reply ->
+          WerefoxBackend.Agent.send_message(
+            agent_pid,
+            {message_type, {sender, content}, game_step, state["cursor"]}
+          )
+
+          {state["context"], rest_action, state["cursor"]}
+      end
+
 
     updated_state =
-      state |> Map.put("context", new_context) |> Map.put("next_action", agent_action)
-
+      state
+      |> Map.put("context", new_context)
+      |> Map.put("next_action", new_next_action)
+      |> Map.put("step", game_step + 1)
+      |> Map.put("cursor", new_cursor)
+    IO.inspect("xxxxxx updated_state xxxxx")
     IO.inspect(updated_state)
     # state = %{"pid_table" => state["pid_table"], "context" => new_context}
-    {:reply, new_context, state}
+    agent_history = get_total_agent_history(state["pid_table"])
+    {:reply, agent_history, updated_state}
   end
 
   def start_link(room_id, config) do
@@ -99,68 +127,41 @@ defmodule WerefoxBackend.RoomController do
     end
   end
 
-  defp add_public_output_to_content(prev_content_list, agent_action) do
+  defp add_public_output_to_content(prev_content_list, agent_action, step) do
+    # prev_content_list = [{"0", content, "1", content}]
     case Enum.filter(agent_action, fn {type, _} -> type == :public end) do
-      [{:public, public_action}] ->
-        IO.inspect(public_action)
-        prev_content_list ++ public_action
+      [{:public, [{index, message, _}]}] ->
+        prev_content_list ++ [{step, index, message}]
 
       _ ->
         prev_content_list
     end
   end
 
-  defp generate_agent_next_action({room_id, next_action_list}) do
-    case next_action_list do
+  def generate_agent_next_action(room_id, history_action_list) do
+    case history_action_list do
       [] ->
-        agent_pid = String.to_atom("#{room_id}_0")
-        {agent_pid, "", [], :ai}
+        {String.to_atom("#{room_id}_#{0}"), {:private, "0", "0", "", :reply}, []}
 
-      [[{:private, private_action_list}, {:public, public_action_list}] | rest_action] ->
-        [{agent_index, content} | rest_private_action] = private_action_list
-        agent_pid = String.to_atom("#{room_id}_#{agent_index}")
-
-        next_private_list =
-          case rest_private_action do
-            [] ->
-              [{:public, public_action_list}]
-
-            _ ->
-              [{:private, rest_private_action}, {:public, public_action_list}]
-          end
-
-        {agent_pid, content, next_private_list, :private}
-
-      [[{:private, private_action_list}] | rest_action] ->
-        [{agent_index, content} | rest_private_action] = private_action_list
-        agent_pid = String.to_atom("#{room_id}_#{agent_index}")
-
-        next_private_list =
-          case rest_private_action do
-            [] ->
-              []
-
-            _ ->
-              [{:private, rest_private_action}]
-          end
-
-        {agent_pid, content, next_private_list, :private}
-
-      [[{:public, public_action_list}] | rest_action] ->
-        [{agent_index, content} | rest_public_action] = public_action_list
-        agent_pid = String.to_atom("#{room_id}_#{agent_index}")
-
-        next_public_list =
-          case rest_public_action do
-            [] ->
-              []
-
-            _ ->
-              [{:public, rest_public_action}]
-          end
-
-        {agent_pid, content, next_public_list, :public}
+      [exec_action | rest_action] ->
+        {_, sender, receiver, _, _} = exec_action
+        {String.to_atom("#{room_id}_#{receiver}"), exec_action, rest_action}
     end
+  end
+
+  defp generate_message_type({reply_type, message_type}) do
+    case {reply_type, message_type} do
+      {:reply, :private} -> :private_ask
+      {:reply, :public} -> :public_ask
+      {:no_reply, :private} -> :private_info
+      {:no_reply, :public} -> :public_info
+    end
+  end
+
+  defp get_total_agent_history(pid_map) do
+    Enum.reduce(pid_map, %{}, fn {name, pid}, acc ->
+      Map.put(acc, name, WerefoxBackend.Agent.get_agent_history_context(pid))
+    end)
   end
 
   def run_game({room_id, room_pid}) do

@@ -555,29 +555,29 @@ agents:
     user_id: 0
 
   -
-    name: "农民"
+    name: 平民
     prompt_template: *farmer_prompt
     memory_type: chat_history
     user_id: unknown
 
   -
-    name: "女巫"
+    name: 女巫
     prompt_template: *witch_prompt
     memory_type: chat_history
     user_id: unknown
 
   -
-    name: "预言家"
+    name: 预言家
     prompt_template: *predictor_prompt
     memory_type: chat_history
     user_id: unknown
   -
-    name: "猎人"
+    name: 猎人
     prompt_template: *hunter_prompt
     memory_type: chat_history
     user_id: unknown
 
-  - name: "狼人"
+  - name: 狼人
     prompt_template: *fox_prompt
     memory_type: chat_history
     user_id: unknown

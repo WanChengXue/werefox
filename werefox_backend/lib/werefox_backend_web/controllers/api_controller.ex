@@ -5,23 +5,23 @@ defmodule WerefoxBackendWeb.ApiController do
   def init_game(conn, _) do
     # 要求传入的config是一个json, 这里使用本地路径替代
     config_path = Path.join(File.cwd!(), "lib/werefox_backend/game_yaml/werefox.yaml")
-    config = YamlElixir.read_from_file(config_path)
-    {:ok, response} = config
-    WerefoxBackend.RoomCache.start_room(response)
+    {:ok, response} = YamlElixir.read_from_file(config_path)
+    room_pid = WerefoxBackend.RoomCache.start_room(response)
 
     conn
     |> put_status(:ok)
-    |> json(%{"init" => response})
+    |> json(%{"room_pid" => room_pid})
   end
 
   def run_game(conn, %{"room_id" => room_id}) do
     strip_room_id = String.replace(room_id, ~r/\\|"|"/, "")
     room_pid = WerefoxBackend.RoomCache.get_room_pid(strip_room_id)
-    output_list = WerefoxBackend.RoomController.run_game({strip_room_id, room_pid})
+    game_log = WerefoxBackend.RoomController.run_game({strip_room_id, room_pid})
+    # IO.inspect(game_log)
 
     conn
     |> put_status(:ok)
-    |> json(Enum.into(output_list, %{}))
+    |> json(game_log)
   end
 
   def get_summary(conn, %{"room_id" => room_id}) do
@@ -34,9 +34,5 @@ defmodule WerefoxBackendWeb.ApiController do
     conn
     |> put_status(:ok)
     |> json(%{"room_table" => room_table_list})
-  end
-
-  defp config_parse(config) do
-    # 定义一下数据格式
   end
 end
